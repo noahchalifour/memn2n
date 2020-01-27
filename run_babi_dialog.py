@@ -30,9 +30,6 @@ flags.DEFINE_string(
 flags.DEFINE_string(
     'model_dir', './model',
     'Directory to save model.')
-flags.DEFINE_integer(
-    'steps_per_checkpoint', 0,
-    'Number of steps between each model checkpoint.')
 
 
 def get_dataset_fn(tokenizer_fn,
@@ -123,6 +120,8 @@ def build_experiment_fn():
 
             hp.hparams(hparams)
 
+            model_dir = os.path.join(FLAGS.model_dir, str(num))
+
             keras_model.fit(train_dataset, 
                 epochs=hparams[HP_EPOCHS], 
                 steps_per_epoch=steps_per_epoch,
@@ -130,6 +129,8 @@ def build_experiment_fn():
                         tf.keras.callbacks.TensorBoard(run_dir),
                         hp.KerasCallback(run_dir, hparams)
                     ])
+
+            keras_model.save(model_dir)
 
             loss, accuracy = keras_model.evaluate(dev_dataset, 
                 steps=validation_steps)
