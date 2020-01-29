@@ -76,10 +76,11 @@ def build_experiment_fn():
 
             tokenizer_fn = preprocessing.get_tokenizer_fn(hparams)
 
-            vocab = vocabulary.build_vocab(all_texts, 
+            vocab, unk_id = vocabulary.build_vocab(all_texts, 
                 tokenizer_fn=tokenizer_fn, hparams=hparams)
 
-            vocab_table = preprocessing.build_lookup_table(vocab)
+            vocab_table = preprocessing.build_lookup_table(vocab,
+                default_value=unk_id)
             candidates_table = preprocessing.build_lookup_table(candidates)
 
             dataset_fn = get_dataset_fn(

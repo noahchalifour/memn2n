@@ -11,8 +11,8 @@ def build_vocab(texts, tokenizer_fn, hparams):
 
     unique_tokens, _, token_counts = tf.unique_with_counts(all_tokens)
 
-    # Add blank for memory padding
-    unique_tokens = tf.concat([[''], unique_tokens], axis=0)
+    # Add blank and unknown tokens
+    unique_tokens = tf.concat([['', '<unk>'], unique_tokens], axis=0)
 
     # Add T = 1000 "time features"
     time_features = ['#{}'.format(i) for i in range(1000)]
@@ -22,7 +22,7 @@ def build_vocab(texts, tokenizer_fn, hparams):
     unique_tokens = tf.concat([unique_tokens, ['<u>', '<r>']], axis=0)
 
     if hparams[HP_VOCAB_SIZE] <= 0:
-        return unique_tokens
+        return unique_tokens, 1
 
     # TODO: Implement fixed vocab size
     
