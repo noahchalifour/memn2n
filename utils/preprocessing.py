@@ -1,15 +1,16 @@
 import tensorflow as tf
-import tensorflow_text as tf_text
+# import tensorflow_text as tf_text
 
 from .hparams import *
 
 
 def get_tokenizer_fn(hparams):
 
-    tf_word_tokenizer = tf_text.WhitespaceTokenizer()
+    # tf_word_tokenizer = tf_text.WhitespaceTokenizer()
 
     def word_tokenize(text):
-        return tf_word_tokenizer.tokenize(text)
+        # return tf_word_tokenizer.tokenize(text)
+        return tf.strings.split(text, sep=' ')
 
     def character_tokenize(text):
         return tf.strings.bytes_split(text)
@@ -22,13 +23,13 @@ def get_tokenizer_fn(hparams):
     return None
 
 
-def build_lookup_table(keys):
+def build_lookup_table(keys, default_value=-1):
 
     kv_init = tf.lookup.KeyValueTensorInitializer(
         keys=keys, values=tf.range(len(keys)))
 
     return tf.lookup.StaticHashTable(kv_init,
-        default_value=-1)
+        default_value=default_value)
 
 
 def preprocess_input(inputs, 
