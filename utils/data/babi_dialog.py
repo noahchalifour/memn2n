@@ -7,30 +7,6 @@ from ..hparams import *
 from ..preprocessing import preprocess_dataset, get_tokenizer_fn
 
 
-# def get_dataset_fn(input_file_pattern):
-
-#     dataset = tf.data.Dataset.list_files(input_file_pattern)
-
-#     dataset = dataset.interleave(
-#       tf.data.TextLineDataset, cycle_length=4,
-#       num_parallel_calls=tf.data.experimental.AUTOTUNE)
-
-#     for d in dataset.take(1):
-#         print(d)
-
-
-# def load_dataset(ds_type, path, hparams, task=None):
-
-#     if task is None:
-#         input_file_pattern = os.path.join(path, 
-#             'dialog-babi-task*-{}.txt'.format(ds_type))
-#     else:
-#         input_file_pattern = os.path.join(path,
-#             'dialog-babi-task{}-*-{}.txt'.format(task, ds_type))
-
-#     return get_dataset_fn(input_file_pattern)
-
-
 def get_candidates(base_path, task):
 
     def clean_candidate(cand):
@@ -61,9 +37,6 @@ def load_all_texts(base_path, task):
     else:
         filepaths = glob.glob(os.path.join(base_path,
             'dialog-babi-task[1-5]-*[s|l|v|n|t].txt'))
-        filepaths += [
-            os.path.join(base_path, 'dialog-babi-candidates.txt'),
-            os.path.join(base_path, 'dialog-babi-kb-all.txt')]
 
     texts = []
 
@@ -122,7 +95,7 @@ def load_dataset(suffix,
 
                     inp = '#{} <u> {}'.format(conv_index, texts[0])
 
-                    if len(memories) > 0:
+                    if len(memories) > 0 and conv_index != 0:
                         new_memory = memories[-1][1:] + [inp]
                     else:
                         new_memory = initial_memory[1:] + [inp]
