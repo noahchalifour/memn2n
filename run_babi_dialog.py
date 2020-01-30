@@ -14,7 +14,7 @@ FLAGS = flags.FLAGS
 # Required flags
 flags.DEFINE_enum(
     'mode', None,
-    ['train', 'test', 'interactive'],
+    ['train', 'test'],
     'Mode to run.')
 flags.DEFINE_string(
     'data_dir', None,
@@ -30,6 +30,9 @@ flags.DEFINE_string(
 flags.DEFINE_string(
     'model_dir', './model',
     'Directory to save model.')
+flags.DEFINE_bool(
+    'use_oov', False,
+    'Use OOV dataset.')
 
 
 def get_dataset_fn(tokenizer_fn,
@@ -56,6 +59,21 @@ def get_dataset_fn(tokenizer_fn,
     return _dataset_fn
 
 
+def load_model(model_dir):
+
+    saved_model_dir = os.path.join(model_dir, 'saved_model')
+    model = tf.keras.models.load_model(saved_model_dir)
+
+    hparams_fp = os.path.join(model_dir, 'hparams.json')
+    with open(hparams_fp, 'r') as hp_json:
+        hparams = json.load(hp_json)
+
+    vocab_filepath = os.path.join(model_dir, 'vocab')
+    vocab, unk_id = vocabulary.load_vocab(vocab_filepath)
+
+    return model, hparams, vocab, unk_id
+
+
 def build_experiment_fn():
 
     all_texts = babi_dialog.load_all_texts(FLAGS.data_dir, 
@@ -69,10 +87,12 @@ def build_experiment_fn():
 
         with tf.summary.create_file_writer(run_dir).as_default():
 
-            _hparams = {h.name: hparams[h] for h in hparams}
-            hparams_str = json.dumps(_hparams, indent=4)
+            hp.hparams(hparams)
 
-            logging.info('Running experiment {} with hyperparameters:\n{}'.format(num, hparams_str))
+            hparams = {h.name: hparams[h] for h in hparams}
+
+            logging.info('Running experiment {} with hyperparameters:\n{}'.format(num, 
+                json.dumps(hparams, indent=4)))
 
             tokenizer_fn = preprocessing.get_tokenizer_fn(hparams)
 
@@ -82,6 +102,15 @@ def build_experiment_fn():
             vocab_table = preprocessing.build_lookup_table(vocab,
                 default_value=unk_id)
             candidates_table = preprocessing.build_lookup_table(candidates)
+
+            vocab_size = len(vocab)
+            num_candidates = len(candidates)
+
+            logging.info('Vocabulary size: {}'.format(vocab_size))
+            logging.info('# of candidates: {}'.format(num_candidates))
+
+            candidates_tok = tokenizer_fn(candidates).to_tensor()
+            candidates_enc = vocab_table.lookup(candidates_tok)
 
             dataset_fn = get_dataset_fn(
                 tokenizer_fn=tokenizer_fn,
@@ -98,28 +127,17 @@ def build_experiment_fn():
                 base_path=FLAGS.data_dir,
                 task=FLAGS.task)
 
-            vocab_size = len(vocab)
-            num_candidates = len(candidates)
-
-            candidates_tok = tokenizer_fn(candidates).to_tensor()
-            candidates_enc = vocab_table.lookup(candidates_tok)
-
-            logging.info('Vocabulary size: {}'.format(len(vocab)))
-            logging.info('# of candidates: {}'.format(len(candidates)))
-
             keras_model = build_keras_model(
                 vocab_size=vocab_size,
-                candidates=candidates_enc,
+                candidates_enc=candidates_enc,
                 hparams=hparams)
 
-            optimizer = tf.keras.optimizers.Adam(learning_rate=hparams[HP_LEARNING_RATE])
+            optimizer = tf.keras.optimizers.Adam(learning_rate=hparams[HP_LEARNING_RATE.name])
 
             keras_model.compile(optimizer=optimizer, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
 
-            steps_per_epoch = train_size // hparams[HP_BATCH_SIZE]
-            validation_steps = dev_size // hparams[HP_BATCH_SIZE]
-
-            hp.hparams(hparams)
+            steps_per_epoch = train_size // hparams[HP_BATCH_SIZE.name]
+            validation_steps = dev_size // hparams[HP_BATCH_SIZE.name]
 
             model_dir = os.path.join(FLAGS.model_dir, str(num))
             os.makedirs(model_dir, exist_ok=True)
@@ -127,15 +145,20 @@ def build_experiment_fn():
             py_vocab = [tok.decode('utf8') for tok in vocab.numpy()]
             vocabulary.save_vocab(py_vocab, model_dir)
 
+            hparams_fp = os.path.join(model_dir, 'hparams.json')
+            with open(hparams_fp, 'w') as hp_json:
+                json.dump(hparams, hp_json)
+
             keras_model.fit(train_dataset, 
-                epochs=hparams[HP_EPOCHS], 
+                epochs=hparams[HP_EPOCHS.name], 
                 steps_per_epoch=steps_per_epoch,
                     callbacks=[
                         tf.keras.callbacks.TensorBoard(run_dir),
                         hp.KerasCallback(run_dir, hparams)
                     ])
 
-            keras_model.save(model_dir)
+            export_fp = os.path.join(model_dir, 'saved_model')
+            keras_model.save(export_fp)
 
             loss, accuracy = keras_model.evaluate(dev_dataset, 
                 steps=validation_steps)
@@ -185,10 +208,49 @@ def train():
                                     session_num += 1
 
 
+def test():
+
+    model, hparams, vocab, unk_id = load_model(FLAGS.model_dir)
+
+    vocab_c = tf.constant(vocab)
+
+    candidates = babi_dialog.get_candidates(FLAGS.data_dir, 
+        task=FLAGS.task)
+
+    tokenizer_fn = preprocessing.get_tokenizer_fn(hparams)
+
+    vocab_table = preprocessing.build_lookup_table(vocab,
+        default_value=unk_id)
+    candidates_table = preprocessing.build_lookup_table(candidates)
+
+    dataset_fn = get_dataset_fn(
+        tokenizer_fn=tokenizer_fn,
+        vocab_table=vocab_table,
+        candidates_table=candidates_table,
+        hparams=hparams)
+
+    if FLAGS.use_oov and FLAGS.task != 6:
+        dataset_suffix = 'tst-OOV'
+    else:
+        dataset_suffix = 'tst'
+
+    dataset, dataset_size = dataset_fn(
+        suffix=dataset_suffix,
+        base_path=FLAGS.data_dir,
+        task=FLAGS.task)
+
+    steps = dataset_size // hparams[HP_BATCH_SIZE.name]
+
+    loss, accuracy = model.evaluate(dataset, 
+        steps=steps)
+
+
 def main(_):
 
     if FLAGS.mode == 'train':
         train()
+    elif FLAGS.mode == 'test':
+        test()
 
 
 if __name__ == '__main__':

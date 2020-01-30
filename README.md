@@ -11,7 +11,7 @@ Once you have the dataset extracted, run the following commands to setup the rep
 ```
 git clone https://github.com/noahchalifour/memn2n
 cd memn2n
-pip install tensorflow # or tensorflow-gpu for GPU version
+pip install tf-nightly==2.2.0.dev20200130 # or tf-nightly-gpu==2.2.0.dev20200130 for GPU version
 pip install -r requirements.txt
 ```
 

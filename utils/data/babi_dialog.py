@@ -47,9 +47,36 @@ def load_all_texts(base_path, task):
                 if _line == '':
                     continue
                 _line = re.sub(r'^\d+\s', '', _line)
-                texts += _line.split('\t')
+                line_texts = _line.split('\t')
+                if len(line_texts) > 1:
+                    texts += line_texts
 
     return texts
+
+
+def load_kb(base_path, task):
+
+    if task == 6:
+        kb_path = os.path.join(base_path, 'dialog-babi-task6-dstc2-kb.txt')
+    else:
+        kb_path = os.path.join(base_path, 'dialog-babi-kb-all.txt')
+
+    kb = []
+
+    with open(kb_path, 'r') as f:
+        for line in f:
+            _line = line.strip('\n')
+            if _line == '':
+                continue
+            _line = re.sub(r'^\d+\s', '', _line)
+            if task == 6:
+                result, _type, word = _line.split(' ')
+            else:
+                result, word = _line.split('\t')
+                result, _type = result.split(' ')
+            kb.append([result, _type, word])
+
+    return kb
 
 
 def load_dataset(suffix, 
@@ -57,7 +84,7 @@ def load_dataset(suffix,
                  hparams,
                  task=None):
 
-    initial_memory = ['' for _ in range(hparams[HP_MEMORY_SIZE])]
+    initial_memory = ['' for _ in range(hparams[HP_MEMORY_SIZE.name])]
     
     memories = []
     inputs = []

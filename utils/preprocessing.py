@@ -15,18 +15,21 @@ def get_tokenizer_fn(hparams):
     def character_tokenize(text):
         return tf.strings.bytes_split(text)
 
-    if hparams[HP_TOKEN_TYPE] == 'word':
+    if hparams[HP_TOKEN_TYPE.name] == 'word':
         return word_tokenize
-    elif hparams[HP_TOKEN_TYPE] == 'character':
+    elif hparams[HP_TOKEN_TYPE.name] == 'character':
         return character_tokenize
 
     return None
 
 
-def build_lookup_table(keys, default_value=-1):
+def build_lookup_table(keys, values=None, default_value=-1):
+
+    if values is None:
+        values = tf.range(len(keys))
 
     kv_init = tf.lookup.KeyValueTensorInitializer(
-        keys=keys, values=tf.range(len(keys)))
+        keys=keys, values=values)
 
     return tf.lookup.StaticHashTable(kv_init,
         default_value=default_value)
@@ -49,7 +52,8 @@ def preprocess_input(inputs,
         mem_tok = tf.concat([padding,
                              tokenizer_fn(inputs['memories'])], axis=1)
 
-    mem_enc = vocab_table.lookup(mem_tok.to_tensor())
+    mem_tok = mem_tok.to_tensor()
+    mem_enc = vocab_table.lookup(mem_tok)
 
     inp_tok = tokenizer_fn(inputs['inputs'])
     inp_enc = vocab_table.lookup(inp_tok)
@@ -77,7 +81,7 @@ def preprocess_dataset(dataset,
             candidates_table=candidates_table)),
         num_parallel_calls=tf.data.experimental.AUTOTUNE)
 
-    dataset = dataset.padded_batch(hparams[HP_BATCH_SIZE], 
+    dataset = dataset.padded_batch(hparams[HP_BATCH_SIZE.name], 
         padded_shapes=({
             'memories': [-1, -1],
             'inputs': [-1]

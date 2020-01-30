@@ -4,19 +4,19 @@ from utils.hparams import *
 
 
 def build_keras_model(vocab_size,
-                      candidates,
+                      candidates_enc,
                       hparams):
 
-    memories = tf.keras.Input(shape=[15, 10],
+    memories = tf.keras.Input(shape=[hparams[HP_MEMORY_SIZE.name], None],
         name='memories', dtype=tf.int32)
-    inputs = tf.keras.Input(shape=[10],
+    inputs = tf.keras.Input(shape=[None],
         name='inputs', dtype=tf.int32)
 
     A = tf.keras.layers.Embedding(vocab_size,
-        output_dim=hparams[HP_EMBED_SIZE])
-    R = tf.keras.layers.Dense(hparams[HP_EMBED_SIZE])
+        output_dim=hparams[HP_EMBED_SIZE.name])
+    R = tf.keras.layers.Dense(hparams[HP_EMBED_SIZE.name])
     W = tf.keras.layers.Embedding(vocab_size,
-        output_dim=hparams[HP_EMBED_SIZE])
+        output_dim=hparams[HP_EMBED_SIZE.name])
 
     mem_emb = A(memories)
     mem_emb = tf.reduce_sum(mem_emb, axis=2)
@@ -24,7 +24,7 @@ def build_keras_model(vocab_size,
     inp_emb = A(inputs)
     inp_emb = tf.reduce_sum(inp_emb, axis=1)
 
-    for _ in range(hparams[HP_MEMORY_HOPS]):
+    for _ in range(hparams[HP_MEMORY_HOPS.name]):
 
         prob = tf.matmul(inp_emb, mem_emb, 
             transpose_b=True)
@@ -36,7 +36,7 @@ def build_keras_model(vocab_size,
 
         inp_emb = out
 
-    cand_emb = W(candidates)
+    cand_emb = W(candidates_enc)
     cand_emb = tf.reduce_sum(cand_emb, axis=1)
 
     logits = tf.matmul(out, cand_emb,

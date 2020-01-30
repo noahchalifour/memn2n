@@ -21,7 +21,7 @@ def build_vocab(texts, tokenizer_fn, hparams):
     # Add speaker features
     unique_tokens = tf.concat([unique_tokens, ['<u>', '<r>']], axis=0)
 
-    if hparams[HP_VOCAB_SIZE] <= 0:
+    if hparams[HP_VOCAB_SIZE.name] <= 0:
         return unique_tokens, 1
 
     # TODO: Implement fixed vocab size
@@ -37,3 +37,18 @@ def save_vocab(idx_to_tok, path, prefix=None):
     with open(vocab_fp, 'w') as f:
         for tok in idx_to_tok:
             f.write('{}\n'.format(tok))
+
+
+def load_vocab(filepath):
+
+    vocab = []
+    unk_id = -1
+
+    with open(filepath, 'r') as f:
+        for line in f:
+            token = line.strip('\n')
+            if token == '<unk>':
+                unk_id = len(vocab)
+            vocab.append(token)
+
+    return vocab, unk_id
