@@ -122,6 +122,10 @@ def build_experiment_fn():
             hp.hparams(hparams)
 
             model_dir = os.path.join(FLAGS.model_dir, str(num))
+            os.makedirs(model_dir, exist_ok=True)
+
+            py_vocab = [tok.decode('utf8') for tok in vocab.numpy()]
+            vocabulary.save_vocab(py_vocab, model_dir)
 
             keras_model.fit(train_dataset, 
                 epochs=hparams[HP_EPOCHS], 

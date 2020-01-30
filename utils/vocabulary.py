@@ -27,10 +27,13 @@ def build_vocab(texts, tokenizer_fn, hparams):
     # TODO: Implement fixed vocab size
     
 
-# def save_vocab(idx_to_tok, path, prefix):
+def save_vocab(idx_to_tok, path, prefix=None):
+    
+    if prefix is None:
+        vocab_fp = os.path.join(path, 'vocab')
+    else:
+        vocab_fp = os.path.join(path, '{}.vocab'.format(prefix))
 
-#     vocab_fp = os.path.join(path, '{}.vocab'.format(prefix))
-
-#     with open(vocab_fp, 'w') as f:
-#         for tok in idx_to_tok:
-#             f.write('{}\n'.format(tok))
+    with open(vocab_fp, 'w') as f:
+        for tok in idx_to_tok:
+            f.write('{}\n'.format(tok))
