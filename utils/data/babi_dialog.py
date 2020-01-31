@@ -10,8 +10,9 @@ from ..preprocessing import preprocess_dataset, get_tokenizer_fn
 def get_candidates(base_path, task):
 
     def clean_candidate(cand):
-        _cand = re.sub(r'^\d+\s', '', cand)
+        _cand = re.sub(r'^\d+\s+', '', cand)
         _cand = _cand.strip('\n')
+        _cand = _cand.strip()
         return _cand
 
     if task == 6:
@@ -46,8 +47,8 @@ def load_all_texts(base_path, task):
                 _line = line.strip('\n')
                 if _line == '':
                     continue
-                _line = re.sub(r'^\d+\s', '', _line)
-                line_texts = _line.split('\t')
+                _line = re.sub(r'^\d+\s+', '', _line)
+                line_texts = [t.strip() for t in _line.split('\t')]
                 if len(line_texts) > 1:
                     texts += line_texts
 
@@ -68,7 +69,7 @@ def load_kb(base_path, task):
             _line = line.strip('\n')
             if _line == '':
                 continue
-            _line = re.sub(r'^\d+\s', '', _line)
+            _line = re.sub(r'^\d+\s+', '', _line)
             if task == 6:
                 result, _type, word = _line.split(' ')
             else:
@@ -114,7 +115,7 @@ def load_dataset(suffix,
                     is_new_dialog = True
                     continue
 
-                _line = re.sub(r'^\d+\s', '', _line)
+                _line = re.sub(r'^\d+\s+', '', _line)
 
                 texts = _line.split('\t')
 
@@ -138,6 +139,9 @@ def load_dataset(suffix,
                 else:
                 
                     inp_text, out_text = texts
+                    
+                    inp_text = inp_text.strip()
+                    out_text = out_text.strip()
 
                     if is_knowledge:
 
